@@ -1,0 +1,564 @@
+<!DOCTYPE html><html><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;"><meta http-equiv="x-dns-prefetch-control" content="off"><script src="https://puc.poecdn.net/authenticated_preview_page/standard.3ef2c256959faf5a756d.js"></script>
+    <meta charset="utf-8">
+    <title>Bayes Simulations</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://puc.poecdn.net/authenticated_preview_page/disableWebRTC.9710cebe07429a9e8e06.js"></script><meta name="x-poe-allow-downloads" content="true"><meta name="x-poe-datastore-behavior" content="disabled"><script src="https://puc.poecdn.net/authenticated_preview_page/tw.50ec1b0612bf5b0c30a5.js"></script><script src="https://puc.poecdn.net/authenticated_preview_page/deps.faccd16000d314dc16d5.js"></script><script src="https://puc.poecdn.net/authenticated_preview_page/exports.b0f0f482cdeb5302b0b9.js"></script><script src="https://puc.poecdn.net/authenticated_preview_page/renderer.75c73ae6b4235f62945a.js"></script><script>Object.defineProperty(exports, "__esModule", {value: true}); function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }var _react = require('react'); var _react2 = _interopRequireDefault(_react);
+
+
+
+var _recharts = require('recharts');
+
+
+var _lucidereact = require('lucide-react');
+
+// ---------------------------------------------------------------
+// Shared small components
+// ---------------------------------------------------------------
+function SectionCard({ title, children }) {
+  return (
+    _react2.default.createElement('div', { className: "bg-white rounded-xl shadow p-4 mb-4"    ,}
+      , title && _react2.default.createElement('h3', { className: "font-semibold text-slate-700 mb-2"  ,}, title)
+      , children
+    )
+  );
+}
+
+function Pct({ value }) {
+  return _react2.default.createElement('span', { className: "font-mono",}, (value * 100).toFixed(1), "%");
+}
+
+// ---------------------------------------------------------------
+// TAB 1: Cookie Jar Mystery
+// ---------------------------------------------------------------
+const JAR_A = { cc: 0.75, label: 'Jar A', desc: '30 choc chip / 10 oatmeal' };
+const JAR_B = { cc: 0.5, label: 'Jar B', desc: '20 choc chip / 20 oatmeal' };
+
+function CookieJarTab() {
+  const [trueJar, setTrueJar] = _react.useState.call(void 0, () => (Math.random() < 0.5 ? 'A' : 'B'));
+  const [draws, setDraws] = _react.useState.call(void 0, []);
+  const [showPosterior, setShowPosterior] = _react.useState.call(void 0, false);
+  const [showMath, setShowMath] = _react.useState.call(void 0, false);
+  const [revealed, setRevealed] = _react.useState.call(void 0, false);
+
+  const drawCookie = () => {
+    const pCC = trueJar === 'A' ? JAR_A.cc : JAR_B.cc;
+    const cookie = Math.random() < pCC ? 'CC' : 'OM';
+    setDraws((d) => [...d, cookie]);
+  };
+
+  const reset = () => {
+    setTrueJar(Math.random() < 0.5 ? 'A' : 'B');
+    setDraws([]);
+    setRevealed(false);
+    setShowPosterior(false);
+    setShowMath(false);
+  };
+
+  // Sequential Bayesian updates
+  const updates = _react.useMemo.call(void 0, () => {
+    let prior = 0.5;
+    return draws.map((d, i) => {
+      const likeA = d === 'CC' ? 0.75 : 0.25;
+      const likeB = 0.5;
+      const num = prior * likeA;
+      const den = num + (1 - prior) * likeB;
+      const post = num / den;
+      const row = { i: i + 1, draw: d, prior, likeA, likeB, post };
+      prior = post;
+      return row;
+    });
+  }, [draws]);
+
+  const posterior = updates.length ? updates[updates.length - 1].post : 0.5;
+  const chartData = [{ draw: 0, pA: 0.5 }, ...updates.map((u) => ({ draw: u.i, pA: u.post }))];
+
+  return (
+    _react2.default.createElement('div', null
+      , _react2.default.createElement(SectionCard, { title: "Setup",}
+        , _react2.default.createElement('p', { className: "text-sm text-slate-600 mb-2"  ,}, "A jar was secretly chosen by coin flip. Cookies are drawn "
+                     , _react2.default.createElement('em', null, "with replacement" ), ". After each draw, have students compute the updated probability that it's Jar A — then reveal the answer."
+
+
+        )
+        , _react2.default.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 gap-3"   ,}
+          , [JAR_A, JAR_B].map((jar) => (
+            _react2.default.createElement('div', { key: jar.label, className: "border-2 border-amber-200 bg-amber-50 rounded-lg p-3 text-center"     ,}
+              , _react2.default.createElement('div', { className: "font-bold text-amber-800" ,}, jar.label)
+              , _react2.default.createElement('div', { className: "text-sm text-slate-600" ,}, jar.desc)
+              , _react2.default.createElement('div', { className: "text-xs text-slate-500 mt-1"  ,}, "P(choc chip) = "
+                   , jar.cc, "  ·  P(oatmeal) = "    , (1 - jar.cc).toFixed(2)
+              )
+            )
+          ))
+        )
+      )
+
+      , _react2.default.createElement(SectionCard, { title: "Draws",}
+        , _react2.default.createElement('div', { className: "flex flex-wrap gap-2 mb-3"   ,}
+          , _react2.default.createElement('button', { onClick: drawCookie, disabled: revealed,
+            className: "flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg font-medium"          ,}
+            , _react2.default.createElement(_lucidereact.Dices, { size: 18,} ), " Draw a cookie"
+          )
+          , _react2.default.createElement('button', { onClick: () => setShowPosterior((s) => !s),
+            className: "flex items-center gap-2 bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-medium"         ,}
+            , showPosterior ? _react2.default.createElement(_lucidereact.EyeOff, { size: 18,} ) : _react2.default.createElement(_lucidereact.Eye, { size: 18,} )
+            , showPosterior ? 'Hide' : 'Reveal', " posterior"
+          )
+          , _react2.default.createElement('button', { onClick: () => setRevealed(true), disabled: revealed || draws.length === 0,
+            className: "flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg font-medium"          ,}
+            , _react2.default.createElement(_lucidereact.Eye, { size: 18,} ), " Reveal the jar!"
+          )
+          , _react2.default.createElement('button', { onClick: reset,
+            className: "flex items-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium"         ,}
+            , _react2.default.createElement(_lucidereact.RefreshCw, { size: 18,} ), " New game"
+          )
+        )
+
+        , _react2.default.createElement('div', { className: "flex flex-wrap gap-2 min-h-8"   ,}
+          , draws.length === 0 && _react2.default.createElement('span', { className: "text-slate-400 text-sm" ,}, "No draws yet…"  )
+          , draws.map((d, i) => (
+            _react2.default.createElement('span', { key: i,
+              className: `px-3 py-1 rounded-full text-sm font-medium ${
+                d === 'CC' ? 'bg-amber-800 text-white' : 'bg-amber-100 text-amber-900 border border-amber-300'
+              }`,}
+              , i + 1, ". " , d === 'CC' ? '🍪 Choc chip' : '🌾 Oatmeal'
+            )
+          ))
+        )
+
+        , revealed && (
+          _react2.default.createElement('div', { className: "mt-4 p-3 rounded-lg bg-emerald-50 border-2 border-emerald-400 text-emerald-800 font-bold text-center text-lg"         ,}, "The secret jar was… "
+                , trueJar === 'A' ? 'Jar A (75% choc chip)' : 'Jar B (50% choc chip)', "!"
+          )
+        )
+      )
+
+      , showPosterior && (
+        _react2.default.createElement(SectionCard, { title: "Posterior: P(Jar A | evidence)"    ,}
+          , _react2.default.createElement('div', { className: "text-center mb-3" ,}
+            , _react2.default.createElement('span', { className: "text-3xl font-bold text-indigo-700"  ,}, _react2.default.createElement(Pct, { value: posterior,} ))
+            , _react2.default.createElement('span', { className: "text-slate-500 text-sm ml-2"  ,}, "chance it's Jar A"   )
+          )
+          , _react2.default.createElement('div', { className: "h-64 w-full" ,}
+            , _react2.default.createElement(_recharts.ResponsiveContainer, { width: "100%", height: "100%",}
+              , _react2.default.createElement(_recharts.LineChart, { data: chartData, margin: { top: 5, right: 20, bottom: 5, left: 0 },}
+                , _react2.default.createElement(_recharts.CartesianGrid, { strokeDasharray: "3 3" ,} )
+                , _react2.default.createElement(_recharts.XAxis, { dataKey: "draw", label: { value: 'Draw #', position: 'insideBottom', offset: -2 },} )
+                , _react2.default.createElement(_recharts.YAxis, { domain: [0, 1], tickFormatter: (v) => `${v * 100}%`,} )
+                , _react2.default.createElement(_recharts.Tooltip, { formatter: (v) => `${(v * 100).toFixed(1)}%`,} )
+                , _react2.default.createElement(_recharts.ReferenceLine, { y: 0.5, stroke: "#94a3b8", strokeDasharray: "4 4" ,} )
+                , _react2.default.createElement(_recharts.Line, { type: "monotone", dataKey: "pA", stroke: "#4f46e5", strokeWidth: 3, dot: { r: 4 },} )
+              )
+            )
+          )
+          , _react2.default.createElement('button', { onClick: () => setShowMath((s) => !s),
+            className: "mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium"    ,}
+            , showMath ? 'Hide' : 'Show', " step-by-step math"
+          )
+          , showMath && (
+            _react2.default.createElement('div', { className: "overflow-x-auto mt-2" ,}
+              , _react2.default.createElement('table', { className: "w-full text-sm text-center"  ,}
+                , _react2.default.createElement('thead', null
+                  , _react2.default.createElement('tr', { className: "bg-slate-100 text-slate-600" ,}
+                    , _react2.default.createElement('th', { className: "p-2",}, "Draw")
+                    , _react2.default.createElement('th', { className: "p-2",}, "Prior P(A)" )
+                    , _react2.default.createElement('th', { className: "p-2",}, "P(draw|A)")
+                    , _react2.default.createElement('th', { className: "p-2",}, "P(draw|B)")
+                    , _react2.default.createElement('th', { className: "p-2",}, "Posterior P(A)" )
+                  )
+                )
+                , _react2.default.createElement('tbody', null
+                  , updates.map((u) => (
+                    _react2.default.createElement('tr', { key: u.i, className: "border-b border-slate-100" ,}
+                      , _react2.default.createElement('td', { className: "p-2",}, u.i, " (" , u.draw === 'CC' ? '🍪' : '🌾', ")")
+                      , _react2.default.createElement('td', { className: "p-2 font-mono" ,}, u.prior.toFixed(3))
+                      , _react2.default.createElement('td', { className: "p-2 font-mono" ,}, u.likeA.toFixed(2))
+                      , _react2.default.createElement('td', { className: "p-2 font-mono" ,}, u.likeB.toFixed(2))
+                      , _react2.default.createElement('td', { className: "p-2 font-mono font-bold text-indigo-700"   ,}, u.post.toFixed(3))
+                    )
+                  ))
+                )
+              )
+              , _react2.default.createElement('p', { className: "text-xs text-slate-500 mt-2"  ,}, "Each posterior becomes the prior for the next draw: P(A|d) = P(A)·P(d|A) / [P(A)·P(d|A) + P(B)·P(d|B)]"
+
+
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+// ---------------------------------------------------------------
+// TAB 2: Medical Test Simulation
+// ---------------------------------------------------------------
+function MedicalTab() {
+  const [baseRate, setBaseRate] = _react.useState.call(void 0, 1);      // percent
+  const [sensitivity, setSensitivity] = _react.useState.call(void 0, 90); // percent
+  const [fpr, setFpr] = _react.useState.call(void 0, 9);                 // percent
+  const [population, setPopulation] = _react.useState.call(void 0, 500);
+  const [view, setView] = _react.useState.call(void 0, 'all');
+  const [guess, setGuess] = _react.useState.call(void 0, 50);
+  const [revealed, setRevealed] = _react.useState.call(void 0, false);
+  const [seed, setSeed] = _react.useState.call(void 0, 0);
+
+  const people = _react.useMemo.call(void 0, () => {
+    const arr = [];
+    for (let i = 0; i < population; i++) {
+      const sick = Math.random() < baseRate / 100;
+      const positive = Math.random() < (sick ? sensitivity / 100 : fpr / 100);
+      arr.push({ sick, positive });
+    }
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseRate, sensitivity, fpr, population, seed]);
+
+  const counts = _react.useMemo.call(void 0, () => {
+    let tp = 0, fp = 0, fn = 0, tn = 0;
+    people.forEach((p) => {
+      if (p.sick && p.positive) tp++;
+      else if (!p.sick && p.positive) fp++;
+      else if (p.sick && !p.positive) fn++;
+      else tn++;
+    });
+    return { tp, fp, fn, tn };
+  }, [people]);
+
+  const br = baseRate / 100, se = sensitivity / 100, fr = fpr / 100;
+  const theoretical = (br * se) / (br * se + (1 - br) * fr || 1);
+  const empirical = counts.tp + counts.fp > 0 ? counts.tp / (counts.tp + counts.fp) : 0;
+
+  const dotColor = (p) => {
+    if (p.sick && p.positive) return 'bg-red-600';       // true positive
+    if (!p.sick && p.positive) return 'bg-amber-400';    // false positive
+    if (p.sick && !p.positive) return 'bg-blue-600';     // false negative
+    return 'bg-slate-300';                                // true negative
+  };
+
+  const visible = view === 'positives' ? people.filter((p) => p.positive) : people;
+
+  const resample = () => { setSeed((s) => s + 1); };
+
+  return (
+    _react2.default.createElement('div', null
+      , _react2.default.createElement(SectionCard, { title: "Disease & test parameters"   ,}
+        , _react2.default.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-3 gap-4"   ,}
+          , _react2.default.createElement('label', { className: "text-sm",}
+            , _react2.default.createElement('span', { className: "text-slate-600",}, "Base rate: "  , _react2.default.createElement('b', null, baseRate, "%"))
+            , _react2.default.createElement('input', { type: "range", min: 1, max: 20, step: 1, value: baseRate,
+              onChange: (e) => { setBaseRate(+e.target.value); setRevealed(false); },
+              className: "w-full accent-red-600" ,} )
+          )
+          , _react2.default.createElement('label', { className: "text-sm",}
+            , _react2.default.createElement('span', { className: "text-slate-600",}, "Sensitivity (true positive rate): "    , _react2.default.createElement('b', null, sensitivity, "%"))
+            , _react2.default.createElement('input', { type: "range", min: 50, max: 100, step: 1, value: sensitivity,
+              onChange: (e) => { setSensitivity(+e.target.value); setRevealed(false); },
+              className: "w-full accent-red-600" ,} )
+          )
+          , _react2.default.createElement('label', { className: "text-sm",}
+            , _react2.default.createElement('span', { className: "text-slate-600",}, "False positive rate: "   , _react2.default.createElement('b', null, fpr, "%"))
+            , _react2.default.createElement('input', { type: "range", min: 0, max: 30, step: 1, value: fpr,
+              onChange: (e) => { setFpr(+e.target.value); setRevealed(false); },
+              className: "w-full accent-red-600" ,} )
+          )
+        )
+        , _react2.default.createElement('div', { className: "flex flex-wrap items-center gap-3 mt-3"    ,}
+          , _react2.default.createElement('span', { className: "text-sm text-slate-600" ,}, "Population:")
+          , [100, 500, 1000].map((n) => (
+            _react2.default.createElement('button', { key: n, onClick: () => { setPopulation(n); setRevealed(false); },
+              className: `px-3 py-1 rounded-lg text-sm font-medium ${
+                population === n ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+              }`,}, n)
+          ))
+          , _react2.default.createElement('button', { onClick: resample,
+            className: "flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium bg-slate-200 hover:bg-slate-300 text-slate-700"          ,}
+            , _react2.default.createElement(_lucidereact.RefreshCw, { size: 14,} ), " Resample"
+          )
+        )
+      )
+
+      , _react2.default.createElement(SectionCard, { title: "The population" ,}
+        , _react2.default.createElement('div', { className: "flex flex-wrap gap-3 mb-3 text-xs"    ,}
+          , _react2.default.createElement('span', { className: "flex items-center gap-1"  ,}, _react2.default.createElement('span', { className: "w-3 h-3 rounded-full bg-red-600 inline-block"    ,} ), " Sick + tested positive"    )
+          , _react2.default.createElement('span', { className: "flex items-center gap-1"  ,}, _react2.default.createElement('span', { className: "w-3 h-3 rounded-full bg-amber-400 inline-block"    ,} ), " Healthy + tested positive (false alarm)"      )
+          , _react2.default.createElement('span', { className: "flex items-center gap-1"  ,}, _react2.default.createElement('span', { className: "w-3 h-3 rounded-full bg-blue-600 inline-block"    ,} ), " Sick + tested negative (missed)"     )
+          , _react2.default.createElement('span', { className: "flex items-center gap-1"  ,}, _react2.default.createElement('span', { className: "w-3 h-3 rounded-full bg-slate-300 inline-block"    ,} ), " Healthy + tested negative"    )
+        )
+        , _react2.default.createElement('div', { className: "flex gap-2 mb-3"  ,}
+          , _react2.default.createElement('button', { onClick: () => setView('all'),
+            className: `px-3 py-1 rounded-lg text-sm font-medium ${view === 'all' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700'}`,}, "Everyone ("
+             , people.length, ")"
+          )
+          , _react2.default.createElement('button', { onClick: () => setView('positives'),
+            className: `px-3 py-1 rounded-lg text-sm font-medium ${view === 'positives' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700'}`,}, "Positive tests only ("
+               , counts.tp + counts.fp, ")"
+          )
+        )
+        , _react2.default.createElement('div', { className: "flex flex-wrap gap-1 p-3 bg-slate-50 rounded-lg max-h-72 overflow-y-auto"       ,}
+          , visible.map((p, i) => (
+            _react2.default.createElement('span', { key: i, className: `w-2 h-2 rounded-full ${dotColor(p)}`,} )
+          ))
+          , visible.length === 0 && _react2.default.createElement('span', { className: "text-slate-400 text-sm" ,}, "Nobody tested positive!"  )
+        )
+      )
+
+      , _react2.default.createElement(SectionCard, { title: "Class prediction: if someone tests positive, what's the chance they're actually sick?"           ,}
+        , _react2.default.createElement('div', { className: "flex items-center gap-3 mb-3"   ,}
+          , _react2.default.createElement('input', { type: "range", min: 0, max: 100, value: guess,
+            onChange: (e) => { setGuess(+e.target.value); },
+            className: "flex-1 accent-indigo-600" , disabled: revealed,} )
+          , _react2.default.createElement('span', { className: "font-bold text-indigo-700 text-xl w-16 text-right"    ,}, guess, "%")
+        )
+        , !revealed ? (
+          _react2.default.createElement('button', { onClick: () => setRevealed(true),
+            className: "bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium"      ,}, "Lock in class guess & reveal"
+
+          )
+        ) : (
+          _react2.default.createElement('div', null
+            , _react2.default.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 text-center mb-3"     ,}
+              , _react2.default.createElement('div', { className: "p-3 rounded-lg bg-indigo-50"  ,}
+                , _react2.default.createElement('div', { className: "text-xs text-slate-500" ,}, "Class guess" )
+                , _react2.default.createElement('div', { className: "text-2xl font-bold text-indigo-700"  ,}, guess, "%")
+              )
+              , _react2.default.createElement('div', { className: "p-3 rounded-lg bg-emerald-50"  ,}
+                , _react2.default.createElement('div', { className: "text-xs text-slate-500" ,}, "Bayes' rule (theoretical)"  )
+                , _react2.default.createElement('div', { className: "text-2xl font-bold text-emerald-700"  ,}, _react2.default.createElement(Pct, { value: theoretical,} ))
+              )
+              , _react2.default.createElement('div', { className: "p-3 rounded-lg bg-amber-50"  ,}
+                , _react2.default.createElement('div', { className: "text-xs text-slate-500" ,}, "This simulation (empirical)"  )
+                , _react2.default.createElement('div', { className: "text-2xl font-bold text-amber-700"  ,}, _react2.default.createElement(Pct, { value: empirical,} ))
+                , _react2.default.createElement('div', { className: "text-xs text-slate-500" ,}, counts.tp, " true / "   , counts.tp + counts.fp, " positives" )
+              )
+            )
+            , _react2.default.createElement('div', { className: "text-sm text-slate-600 bg-slate-50 rounded-lg p-3 font-mono"     ,}, "P(sick | +) = ("
+                  , br.toFixed(2), " × "  , se.toFixed(2), ") / ("  , br.toFixed(2), " × "  , se.toFixed(2), " + "  , (1 - br).toFixed(2), " × "  , fr.toFixed(2), ") = "  , theoretical.toFixed(3)
+            )
+            , _react2.default.createElement('button', { onClick: () => setRevealed(false),
+              className: "mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium"    ,}, "Guess again with new parameters"
+
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+// ---------------------------------------------------------------
+// TAB 3: Spam Filter
+// ---------------------------------------------------------------
+const WORDS = ['free', 'winner', 'meeting', 'money', 'lunch', 'prize', 'report', 'click'];
+const TRAIN = {
+  free: { spam: 7, ham: 2 }, winner: { spam: 5, ham: 0 },
+  meeting: { spam: 1, ham: 7 }, money: { spam: 6, ham: 1 },
+  lunch: { spam: 1, ham: 5 }, prize: { spam: 4, ham: 0 },
+  report: { spam: 1, ham: 6 }, click: { spam: 6, ham: 1 },
+};
+const N_TRAIN = 10; // messages per class
+const smooth = (c) => (c + 1) / (N_TRAIN + 2);
+
+const MESSAGES = [
+  { text: 'WINNER!! Click here to claim your FREE prize', words: ['winner', 'click', 'free', 'prize'], label: 'spam' },
+  { text: 'Lunch meeting tomorrow to review the quarterly report', words: ['lunch', 'meeting', 'report'], label: 'ham' },
+  { text: 'Free lunch at the team meeting on Friday!', words: ['free', 'lunch', 'meeting'], label: 'ham' },
+  { text: 'Make money fast — click for the full report', words: ['money', 'click', 'report'], label: 'spam' },
+  { text: "You're a winner! Send money to claim it", words: ['winner', 'money'], label: 'spam' },
+];
+
+function SpamTab() {
+  const [msgIdx, setMsgIdx] = _react.useState.call(void 0, 0);
+  const [guess, setGuess] = _react.useState.call(void 0, null);
+  const [revealed, setRevealed] = _react.useState.call(void 0, false);
+  const [showTraining, setShowTraining] = _react.useState.call(void 0, true);
+
+  const msg = MESSAGES[msgIdx];
+
+  const calc = _react.useMemo.call(void 0, () => {
+    let spamProd = 0.5, hamProd = 0.5;
+    const rows = msg.words.map((w) => {
+      const ps = smooth(TRAIN[w].spam);
+      const ph = smooth(TRAIN[w].ham);
+      spamProd *= ps;
+      hamProd *= ph;
+      return { w, ps, ph, spamProd, hamProd };
+    });
+    const posterior = spamProd / (spamProd + hamProd);
+    return { rows, spamProd, hamProd, posterior };
+  }, [msg]);
+
+  const pick = (idx) => { setMsgIdx(idx); setGuess(null); setRevealed(false); };
+  const correct = revealed && guess === msg.label;
+
+  return (
+    _react2.default.createElement('div', null
+      , _react2.default.createElement(SectionCard, { title: "Training data (10 spam + 10 legit messages)"       ,}
+        , _react2.default.createElement('button', { onClick: () => setShowTraining((s) => !s),
+          className: "text-sm text-indigo-600 hover:text-indigo-800 font-medium mb-2"    ,}
+          , showTraining ? 'Hide' : 'Show', " word likelihood table"
+        )
+        , showTraining && (
+          _react2.default.createElement('div', { className: "overflow-x-auto",}
+            , _react2.default.createElement('table', { className: "w-full text-sm text-center"  ,}
+              , _react2.default.createElement('thead', null
+                , _react2.default.createElement('tr', { className: "bg-slate-100 text-slate-600" ,}
+                  , _react2.default.createElement('th', { className: "p-2 text-left" ,}, "Word")
+                  , _react2.default.createElement('th', { className: "p-2",}, "# spam containing it"   )
+                  , _react2.default.createElement('th', { className: "p-2",}, "# legit containing it"   )
+                  , _react2.default.createElement('th', { className: "p-2",}, "P(word | spam)*"  )
+                  , _react2.default.createElement('th', { className: "p-2",}, "P(word | legit)*"  )
+                )
+              )
+              , _react2.default.createElement('tbody', null
+                , WORDS.map((w) => (
+                  _react2.default.createElement('tr', { key: w, className: "border-b border-slate-100" ,}
+                    , _react2.default.createElement('td', { className: "p-2 text-left font-medium"  ,}, w)
+                    , _react2.default.createElement('td', { className: "p-2",}, TRAIN[w].spam, "/10")
+                    , _react2.default.createElement('td', { className: "p-2",}, TRAIN[w].ham, "/10")
+                    , _react2.default.createElement('td', { className: "p-2 font-mono text-red-700"  ,}, smooth(TRAIN[w].spam).toFixed(3))
+                    , _react2.default.createElement('td', { className: "p-2 font-mono text-emerald-700"  ,}, smooth(TRAIN[w].ham).toFixed(3))
+                  )
+                ))
+              )
+            )
+            , _react2.default.createElement('p', { className: "text-xs text-slate-500 mt-1"  ,}, "*Laplace smoothing: (count + 1) / (10 + 2), so no probability is ever exactly 0."
+
+            )
+          )
+        )
+      )
+
+      , _react2.default.createElement(SectionCard, { title: "Mystery messages" ,}
+        , _react2.default.createElement('div', { className: "flex flex-wrap gap-2 mb-3"   ,}
+          , MESSAGES.map((m, i) => (
+            _react2.default.createElement('button', { key: i, onClick: () => pick(i),
+              className: `px-3 py-1 rounded-lg text-sm font-medium ${
+                i === msgIdx ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+              }`,}, "Message "
+               , i + 1
+            )
+          ))
+        )
+        , _react2.default.createElement('div', { className: "p-4 bg-slate-50 rounded-lg border border-slate-200 mb-3"     ,}
+          , _react2.default.createElement('div', { className: "text-lg text-slate-800" ,}, "\"", msg.text, "\"")
+          , _react2.default.createElement('div', { className: "text-xs text-slate-500 mt-1"  ,}, "Keywords detected: "
+              , msg.words.map((w) => (
+              _react2.default.createElement('span', { key: w, className: "inline-block bg-indigo-100 text-indigo-700 rounded px-2 py-0 mx-1"      ,}, w)
+            ))
+          )
+        )
+
+        , _react2.default.createElement('div', { className: "flex flex-wrap gap-2 items-center"   ,}
+          , _react2.default.createElement('span', { className: "text-sm text-slate-600 mr-2"  ,}, "Class verdict:" )
+          , _react2.default.createElement('button', { onClick: () => setGuess('spam'), disabled: revealed,
+            className: `px-4 py-2 rounded-lg font-medium ${
+              guess === 'spam' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700 hover:bg-red-200'
+            }`,}, "🚫 Spam" )
+          , _react2.default.createElement('button', { onClick: () => setGuess('ham'), disabled: revealed,
+            className: `px-4 py-2 rounded-lg font-medium ${
+              guess === 'ham' ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+            }`,}, "✅ Legit" )
+          , _react2.default.createElement('button', { onClick: () => setRevealed(true), disabled: guess === null || revealed,
+            className: "flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg font-medium"          ,}
+            , _react2.default.createElement(_lucidereact.Eye, { size: 16,} ), " Reveal"
+          )
+        )
+
+        , revealed && (
+          _react2.default.createElement('div', { className: "mt-4",}
+            , _react2.default.createElement('div', { className: `p-3 rounded-lg border-2 text-center font-bold text-lg mb-3 flex items-center justify-center gap-2 ${
+              correct ? 'bg-emerald-50 border-emerald-400 text-emerald-800' : 'bg-red-50 border-red-400 text-red-800'
+            }`,}
+              , correct ? _react2.default.createElement(_lucidereact.Check, null ) : _react2.default.createElement(_lucidereact.X, null ), "True label: "
+                , msg.label === 'spam' ? 'SPAM' : 'LEGIT', " — class was "    , correct ? 'right!' : 'wrong!'
+            )
+
+            , _react2.default.createElement('h4', { className: "font-semibold text-slate-700 mb-1"  ,}, "Naive Bayes calculation (prior = 0.5 each)"      )
+            , _react2.default.createElement('div', { className: "overflow-x-auto",}
+              , _react2.default.createElement('table', { className: "w-full text-sm text-center"  ,}
+                , _react2.default.createElement('thead', null
+                  , _react2.default.createElement('tr', { className: "bg-slate-100 text-slate-600" ,}
+                    , _react2.default.createElement('th', { className: "p-2 text-left" ,}, "Word")
+                    , _react2.default.createElement('th', { className: "p-2",}, "P(w|spam)")
+                    , _react2.default.createElement('th', { className: "p-2",}, "P(w|legit)")
+                    , _react2.default.createElement('th', { className: "p-2",}, "Running spam score"  )
+                    , _react2.default.createElement('th', { className: "p-2",}, "Running legit score"  )
+                  )
+                )
+                , _react2.default.createElement('tbody', null
+                  , _react2.default.createElement('tr', { className: "border-b border-slate-100 text-slate-500"  ,}
+                    , _react2.default.createElement('td', { className: "p-2 text-left italic"  ,}, "prior"), _react2.default.createElement('td', null ), _react2.default.createElement('td', null )
+                    , _react2.default.createElement('td', { className: "p-2 font-mono" ,}, "0.500")
+                    , _react2.default.createElement('td', { className: "p-2 font-mono" ,}, "0.500")
+                  )
+                  , calc.rows.map((r) => (
+                    _react2.default.createElement('tr', { key: r.w, className: "border-b border-slate-100" ,}
+                      , _react2.default.createElement('td', { className: "p-2 text-left font-medium"  ,}, r.w)
+                      , _react2.default.createElement('td', { className: "p-2 font-mono text-red-700"  ,}, r.ps.toFixed(3))
+                      , _react2.default.createElement('td', { className: "p-2 font-mono text-emerald-700"  ,}, r.ph.toFixed(3))
+                      , _react2.default.createElement('td', { className: "p-2 font-mono" ,}, r.spamProd.toPrecision(3))
+                      , _react2.default.createElement('td', { className: "p-2 font-mono" ,}, r.hamProd.toPrecision(3))
+                    )
+                  ))
+                )
+              )
+            )
+            , _react2.default.createElement('div', { className: "mt-3 p-3 bg-indigo-50 rounded-lg text-center"    ,}
+              , _react2.default.createElement('span', { className: "text-slate-600 text-sm" ,}, "P(spam | words) = "    , calc.spamProd.toPrecision(3), " / ("  , calc.spamProd.toPrecision(3), " + "  , calc.hamProd.toPrecision(3), ") = "  )
+              , _react2.default.createElement('span', { className: "text-2xl font-bold text-indigo-700 ml-1"   ,}, _react2.default.createElement(Pct, { value: calc.posterior,} ))
+            )
+            , msgIdx === 2 && (
+              _react2.default.createElement('p', { className: "text-sm text-amber-700 bg-amber-50 rounded-lg p-2 mt-2"     ,}, "💡 Discussion point: \"free\" pushes toward spam, but \"lunch\" and \"meeting\" are strong legit evidence — Bayes weighs all the evidence together!"
+
+
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+// ---------------------------------------------------------------
+// Main app with tabs
+// ---------------------------------------------------------------
+ function BayesClassActivities() {
+  const [tab, setTab] = _react.useState.call(void 0, 'cookie');
+  const tabs = [
+    { id: 'cookie', label: 'Cookie Jar Mystery', icon: _lucidereact.Cookie },
+    { id: 'medical', label: 'Medical Test', icon: _lucidereact.Stethoscope },
+    { id: 'spam', label: 'Spam Filter', icon: _lucidereact.Mail },
+  ];
+
+  return (
+    _react2.default.createElement('div', { className: "min-h-screen bg-slate-100 p-4"  ,}
+      , _react2.default.createElement('div', { className: "max-w-4xl mx-auto" ,}
+        , _react2.default.createElement('h1', { className: "text-2xl font-bold text-slate-800 mb-1"   ,}, "Bayes' Rule: Class Activities"   )
+        , _react2.default.createElement('p', { className: "text-sm text-slate-500 mb-4"  ,}, "Have students compute answers before clicking any \"reveal\" button!"
+
+        )
+        , _react2.default.createElement('div', { className: "flex flex-wrap gap-2 mb-4"   ,}
+          , tabs.map(({ id, label, icon: Icon }) => (
+            _react2.default.createElement('button', { key: id, onClick: () => setTab(id),
+              className: `flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
+                tab === id ? 'bg-indigo-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-50'
+              }`,}
+              , _react2.default.createElement(Icon, { size: 18,} ), " " , label
+            )
+          ))
+        )
+        , tab === 'cookie' && _react2.default.createElement(CookieJarTab, null )
+        , tab === 'medical' && _react2.default.createElement(MedicalTab, null )
+        , tab === 'spam' && _react2.default.createElement(SpamTab, null )
+      )
+    )
+  );
+} exports.default = BayesClassActivities;
+</script></head>
+  <body>
+  
+
+<div id="preview-app"></div></body></html>
